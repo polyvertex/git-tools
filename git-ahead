@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+#
+# git-ahead
+# Jean-Charles Lefebvre <polyvertex@gmail.com>
+#
+# This git script checks if a repository is synced to its remotes.
+# If PWD is not a git repository, it scans first-level subdirectories to list
+# the ones that need to be synced.
+#
+
+source "$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")/gib"
+
+do_ahead()
+{
+    local print_label="$1"; shift
+    local echoe=""
+    local color="--no-color"
+    [ -t 1 ] && { echoe="-e"; color="--color=always"; }
+
+    local -r output="$( \
+        git log --branches --not --remotes --decorate --oneline $color 2>&1 \
+        | sed "s/^/  /")"
+    [ $? -ne 0 ] && return $?
+    [ -z "$output" ] && return 0
+
+    [ "$print_label" == "print_label" ] && gib_info "$(basename "$PWD"):"
+    echo $echoe "$output"
+    return 0
+}
+
+if git status &>/dev/null; then
+    do_ahead
+else
+    for d in "$PWD"/*; do
+        [ -d "$d/.git" ] || continue
+        pushd "$d" &>/dev/null && do_ahead "print_label" && popd &>/dev/null \
+            || gib_die $? "duh?!"
+    done
+fi

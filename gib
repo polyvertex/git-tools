@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+#
+# gib - git-tools bash library
+# Jean-Charles Lefebvre <polyvertex@gmail.com>
+#
+
+# check bash version
+#[ -n "$BASH_VERSION" -a ${BASH_VERSINFO[0]} -ge 4 ] || \
+#    { echo "** ERROR: Bash v4+ required (current: $BASH_VERSION)" >&2; exit 1; }
+
+gib_echoe()
+{
+    # usage:
+    #   {fd} {attributes} {nontty_prefix} [msg...]
+    # attributes examples:
+    #   http://misc.flogisoft.com/bash/tip_colors_and_formatting
+    local -r fd="$1"; shift
+    local -r attr="$1"; shift
+    local -r nontty_prefix="$1"; shift
+
+    [ -z "$@" ] && { echo ""; return 0; }
+    [ -t "$fd" ] \
+        && echo -e "\e[${attr}m$@\e[0m" >&$fd \
+        || echo "$nontty_prefix$@" >&$fd
+}
+
+gib_info() { gib_echoe 2 36 " -- " "$@"; }          # cyan
+gib_warn() { gib_echoe 2 93 " -- WARNING: " "$@"; } # light yellow
+gib_err()  { gib_echoe 2 91 " ** ERROR: " "$@"; }   # light red
+
+gib_die()
+{
+    # usage: {exit_code [msg]|msg}
+    local exit_code="1"
+    local msg_tail=""
+
+    #[ "$1" =~ ^[[:digit:]]+$ ]] && { exit_code="$1"; shift; }
+    grep -E "^[[:digit:]]+$" <<<"$1" &>/dev/null && { exit_code="$1"; shift; }
+    [ "$exit_code" != "1" ] && msg_tail=" (code $exit_code)"
+
+    gib_err "$@$msg_tail"
+    exit $exit_code
+}
+
+gib_checkcmd()
+{
+    # usage: {cmd_name} [...]
+    for cmd in "$@"; do
+        type $cmd &>/dev/null || gib_die "$cmd command missing"
+    done
+}
+
+gib_rematch()
+{
+    # usage: {value} {extended_regex}
+    # official git distribution on windows is based on a pretty old bash (v3.1)
+    # and the [[ ... =~ ... ]] syntax just fails.
+    local -r value="$1"
+    local -r pattern="$2"
+    grep -E "$pattern" <<<"$value" &>/dev/null
+}

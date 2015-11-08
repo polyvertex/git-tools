@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#
+# git-backtag
+# Jean-Charles Lefebvre <polyvertex@gmail.com>
+#
+# Tag an existing commit using commit's date and time.
+#
+
+source "$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")/gib"
+
+TAG_NAME="$1"
+COMMIT="$2"
+MESSAGE="$3"
+
+[ -z "$MESSAGE" ] && MESSAGE="$TAG_NAME"
+[ -z "$COMMIT" -o -z "$TAG_NAME" ] \
+    && gib_die "usage: $0 {new_tag} {commit} [message]"
+
+GIT_COMMITTER_DATE="$(git log -n 1 --no-color --pretty="format:%ci" "$COMMIT")"
+[ $? -eq 0 ] || gib_die "Commit not found: $COMMIT"
+
+export GIT_COMMITTER_DATE
+git tag -a -m "$MESSAGE" "$TAG_NAME" "$COMMIT"
+code=$?
+unset GIT_COMMITTER_DATE
+[ $code -eq 0 ] || gib_die "Failed to create annotated tag: $TAG_NAME"
